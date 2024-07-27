@@ -6,16 +6,18 @@ import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
 import { buildContext } from "graphql-passport";
-
-import mongoose from "mongoose";
+import path from "path";
+import { fileURLToPath } from "url";
+import mongoose, { models } from "mongoose";
 import Friend from "./db/Friends.js";
 import Todo, { todoScheme } from "./db/Todos.js";
 import User from "./db/Users.js";
 import "dotenv/config";
-import { passport } from "./strategy/googleOauth.js";
+import { verify } from "./authentication/googleAuthentication.js";
+import cookieParser from "cookie-parser";
+import { OAuth2Client } from "google-auth-library";
 
 const app = express();
-app.use(passport.initialize());
 const httpServer = http.createServer(app);
 const typeDefs = `#graphql
     scalar GraphQLDateTime
@@ -41,12 +43,15 @@ const typeDefs = `#graphql
       googleId:String!
       name: String!
       email: String!
+      picture: String!
+      given_name: String!
+      family_name: String!
     }
     type Mutation {
         createTask(input: TodoInput ): Todo
         removeTask(id: ID): Todo
         updateTask(input: TodoInput): Todo
-        signUpGoogle(accessToken: String!): AuthResponse
+
     }
     type AuthResponse {
       accessToken: String!
@@ -67,6 +72,7 @@ const typeDefs = `#graphql
         getUser : [User]!
         getTodoList : [Todo]!
         searchUsers(keyword: String):[User]!
+        googleOAuth(accessToken: String):User
     }
     enum Gender{
         MALE
@@ -123,42 +129,19 @@ const resolvers = {
         }
       });
     },
+    googleOAuth: async (_, variables, ctx) => {
+      const { accessToken } = variables;
+      const { models, req, res } = ctx;
+      console.log("@variables", variables);
+
+      await verify(req, res, accessToken);
+      console.log("@@req.user", req.user);
+      return req.user ? req.user : { message: "user doesn't exist" };
+    },
   },
   Mutation: {
-    signUpGoogle: async (_, variables, ctx) => {
-      const { accessToken } = variables;
-      console.log("@@@hello", accessToken);
-      const { models, req, res } = ctx;
-      // renpose config
-      req.body = {
-        ...req.body,
-        access_token: accessToken,
-      };
-
-      // set the type later
-      // const result = (await authenticateGoogle(req, res)) as any;
-      await passport.authenticate(
-        "oauth2",
-        {
-          session: false,
-        },
-        (err, user) => {
-          console.log("@@@err", err);
-          console.log("@@@user", user);
-        }
-      )(req, res);
-      console.log("@@result", req.user);
-
-      // const { data, info } = result();
-
-      // const user = await User.findOneAndUpdate({ email }, { upsert: true });
-      models.User as typeof User;
-    },
-
     updateTask: (root, { input }) => {
-      console.log("@@what is this", root);
       const { id, task, urgency, importance } = input;
-      console.log("@@", id, task);
       return new Promise(async (res, rej) => {
         const filter = {
           _id: id,
@@ -170,7 +153,6 @@ const resolvers = {
         };
         try {
           const updated = await Todo.findOneAndUpdate(filter, update);
-          console.log("@@@@updated??", updated);
           res(updated);
         } catch (error) {
           rej(error);
@@ -210,6 +192,7 @@ const apolloServer = new ApolloServer({
   resolvers,
   typeDefs,
   plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+  introspection: true,
 });
 await apolloServer.start();
 
@@ -222,22 +205,56 @@ mongoose
     console.log("db is not connected");
   });
 
+const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
+const __dirname = path.dirname(__filename); // get the name of the directory
+app.use(express.static(__dirname + "/public"));
+
+app.use(cookieParser());
+app.use(cors({ origin: "http://localhost:3000", credentials: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.use("/auth/google", async (req, res, next) => {
+  console.log("@@request.body", req.body);
+  const client = new OAuth2Client();
+  const ticket = await client.verifyIdToken({
+    idToken: req.body.accessToken,
+    audience: process.env.OAUTH_CLIENT_ID, // Specify the CLIENT_ID of the app that accesses the backend
+  });
+  const payload = ticket.getPayload();
+  const userid = payload["sub"];
+  req.user = { userid, payload };
+  res.cookie("token", req.body.accessToken, {
+    sameSite: true,
+    httpOnly: true,
+  });
+  res.status(200).json({
+    message: "ok",
+    code: "200",
+    payload,
+  });
+});
+app.use(verify);
+
 app.use(
   "/graphql",
-  cors<cors.CorsRequest>({ origin: ["http://localhost:3000"] }),
-  express.json(),
-  express.urlencoded({ extended: false }),
   expressMiddleware(apolloServer, {
     context: async ({ req, res }) => {
-      return buildContext({
-        req,
-        res,
-        models: { User, Friend },
-      });
+      console.log("hello world", req.cookies);
+      if (req.cookies.token) {
+        return buildContext({
+          req,
+          res,
+          models: { User, Friend },
+        });
+      }
     },
   })
 );
 
+app.use((err, req, res, next) => {
+  console.log("Where is the error: message: ", err.message);
+  res.status(500).json({ message: err.message });
+});
 await new Promise((res, rej) => {
   if (res) {
     console.log(`The server is running on the port ${process.env.PORT}`);
