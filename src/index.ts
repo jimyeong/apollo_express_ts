@@ -84,7 +84,6 @@ const typeDefs = `#graphql
 const resolvers = {
   Query: {
     getTodoList: async () => {
-      console.log("@@@hello is it coming here");
       return new Promise(async (res, rej) => {
         try {
           const todos = await Todo.find();
@@ -97,7 +96,6 @@ const resolvers = {
       });
     },
     searchUsers: async (root, { keyword }) => {
-      console.log("@@@kleyword", keyword);
       return new Promise(async (res, rej) => {
         if (!keyword) res([]);
         try {
@@ -213,8 +211,8 @@ app.use(cookieParser());
 app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
 app.use("/auth/google", async (req, res, next) => {
-  console.log("@@request.body", req.body);
   const client = new OAuth2Client();
   const ticket = await client.verifyIdToken({
     idToken: req.body.accessToken,
@@ -233,13 +231,15 @@ app.use("/auth/google", async (req, res, next) => {
     payload,
   });
 });
+
 app.use(verify);
 
 app.use(
   "/graphql",
+  cors({ origin: "http://localhost:3000", credentials: true }),
   expressMiddleware(apolloServer, {
     context: async ({ req, res }) => {
-      console.log("hello world", req.cookies);
+      console.log("hello world@@@@@@@@@@", req.cookies);
       if (req.cookies.token) {
         return buildContext({
           req,

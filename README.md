@@ -15,3 +15,16 @@ When user doens't have a token, they should see the login page. they are to see 
 
 2. why cookie hasn't come up in the application panel,
    it was solved when added, credential: "included"
+
+// you can save not sensitive information in local storage.
+
+a good place for saving jwt-tokens.
+Cookie is a good place for tokens but with some settings together (sameSite, httpOnly, secure true)
+But in React, I was having concerns about user information.
+But I think their name and pictures are bascially not credential info, but a jwt-token is.
+
+So, you can save them in the local storage.
+I checked Airbnb website is holding user's picture in the localstorage.
+
+I feel like, I know nothing lol.
+Even if I am looking for a job.
