@@ -16,7 +16,9 @@ import "dotenv/config";
 import { verify } from "./authentication/googleAuthentication.js";
 import cookieParser from "cookie-parser";
 import { OAuth2Client } from "google-auth-library";
+import { GraphQLError } from "graphql";
 
+const client = new OAuth2Client();
 const app = express();
 const httpServer = http.createServer(app);
 const typeDefs = `#graphql
@@ -232,15 +234,25 @@ app.use("/auth/google", async (req, res, next) => {
   });
 });
 
-app.use(verify);
-
 app.use(
   "/graphql",
-  cors({ origin: "http://localhost:3000", credentials: true }),
   expressMiddleware(apolloServer, {
     context: async ({ req, res }) => {
-      console.log("hello world@@@@@@@@@@", req.cookies);
-      if (req.cookies.token) {
+      if (!req.cookies.token) {
+        const error = new Error("You are not authenticated");
+        req.body.error = error;
+        req.body.errorCode = 401;
+        throw new GraphQLError("You are not authenticated", {
+          extensions: {
+            code: "BAD_REQUEST",
+          },
+        });
+      } else {
+        const ticket = await client.verifyIdToken({
+          idToken: req.cookies.token,
+          audience: process.env.OAUTH_CLIENT_ID, // Specify the CLIENT_ID of the app that accesses the backend
+        });
+        req.body.user = ticket.getPayload();
         return buildContext({
           req,
           res,

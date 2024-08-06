@@ -28,3 +28,9 @@ I checked Airbnb website is holding user's picture in the localstorage.
 
 I feel like, I know nothing lol.
 Even if I am looking for a job.
+
+more readings are needed I think
+
+- storage(local, index, session).
+- oauth2 protocol
+- lazy loading for spa application

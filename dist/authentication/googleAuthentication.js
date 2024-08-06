@@ -2,7 +2,7 @@ import { OAuth2Client } from "google-auth-library";
 const client = new OAuth2Client();
 async function verify(req, res, next) {
     console.log("@@@@req.cookies", req.cookies);
-    const token = req.cookies.accessToken;
+    const token = req.cookies.token;
     if (!token) {
         const error = new Error("code:401");
         next(error);
