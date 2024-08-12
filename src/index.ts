@@ -238,15 +238,20 @@ app.use(
   "/graphql",
   expressMiddleware(apolloServer, {
     context: async ({ req, res }) => {
+      console.log("req.cookies", req.cookies);
       if (!req.cookies.token) {
         const error = new Error("You are not authenticated");
         req.body.error = error;
         req.body.errorCode = 401;
-        throw new GraphQLError("You are not authenticated", {
-          extensions: {
-            code: "BAD_REQUEST",
-          },
-        });
+        throw new GraphQLError(
+          "You are not authorized to perform this action.",
+          {
+            extensions: {
+              code: "FORBIDDEN",
+              statusCode: 401,
+            },
+          }
+        );
       } else {
         const ticket = await client.verifyIdToken({
           idToken: req.cookies.token,
