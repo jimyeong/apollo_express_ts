@@ -15,7 +15,7 @@ import "dotenv/config";
 import { verify } from "./authentication/googleAuthentication.js";
 import cookieParser from "cookie-parser";
 import { OAuth2Client } from "google-auth-library";
-import { GraphQLError } from "graphql";
+import { errorsHandler } from "./handlers/errorsHandler.js";
 const client = new OAuth2Client();
 const app = express();
 const httpServer = http.createServer(app);
@@ -216,6 +216,7 @@ app.use("/auth/google", async (req, res, next) => {
     const ticket = await client.verifyIdToken({
         idToken: req.body.accessToken,
         audience: process.env.OAUTH_CLIENT_ID, // Specify the CLIENT_ID of the app that accesses the backend
+        // maxExpiry: 1,
     });
     const payload = ticket.getPayload();
     const userid = payload["sub"];
@@ -234,27 +235,24 @@ app.use("/graphql", expressMiddleware(apolloServer, {
     context: async ({ req, res }) => {
         console.log("req.cookies", req.cookies);
         if (!req.cookies.token) {
-            const error = new Error("You are not authenticated");
-            req.body.error = error;
-            req.body.errorCode = 401;
-            throw new GraphQLError("You are not authorized to perform this action.", {
-                extensions: {
-                    code: "FORBIDDEN",
-                    statusCode: 401,
-                },
-            });
+            errorsHandler("401");
         }
         else {
-            const ticket = await client.verifyIdToken({
-                idToken: req.cookies.token,
-                audience: process.env.OAUTH_CLIENT_ID, // Specify the CLIENT_ID of the app that accesses the backend
-            });
-            req.body.user = ticket.getPayload();
-            return buildContext({
-                req,
-                res,
-                models: { User, Friend },
-            });
+            try {
+                const ticket = await client.verifyIdToken({
+                    idToken: req.cookies.token,
+                    audience: process.env.OAUTH_CLIENT_ID, // Specify the CLIENT_ID of the app that accesses the backend
+                });
+                req.body.user = ticket.getPayload();
+                return buildContext({
+                    req,
+                    res,
+                    models: { User, Friend },
+                });
+            }
+            catch (error) {
+                errorsHandler("401", error.message);
+            }
         }
     },
 }));
