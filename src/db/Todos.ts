@@ -17,6 +17,9 @@ export const todoScheme = new mongoose.Schema(
     importance: {
       type: Number,
     },
+    colour: {
+      type: String,
+    },
   },
   { timestamps: true }
 );

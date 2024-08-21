@@ -15,6 +15,9 @@ export const todoScheme = new mongoose.Schema({
     importance: {
         type: Number,
     },
+    colour: {
+        type: String,
+    },
 }, { timestamps: true });
 const Todo = mongoose.model("Todo", todoScheme);
 export default Todo;

@@ -16,6 +16,7 @@ import { verify } from "./authentication/googleAuthentication.js";
 import cookieParser from "cookie-parser";
 import { OAuth2Client } from "google-auth-library";
 import { errorsHandler } from "./handlers/errorsHandler.js";
+import { noteColours } from "./constants/colours.js";
 const client = new OAuth2Client();
 const app = express();
 const httpServer = http.createServer(app);
@@ -38,6 +39,7 @@ const typeDefs = `#graphql
         createdAt: GraphQLDateTime
         updatedAt: GraphQLDateTime
         taskId: Int
+        colour: String
     }
     type User{
       googleId:String!
@@ -178,7 +180,15 @@ const resolvers = {
         },
         createTask: (root, { input }) => {
             const { ownerId, task, urgency, importance } = input;
-            const newTodo = new Todo({ ownerId, task, urgency, importance });
+            const notesNum = noteColours.length;
+            const noteColourIndex = Math.floor(Math.random() * notesNum);
+            const newTodo = new Todo({
+                ownerId,
+                task,
+                urgency,
+                importance,
+                colour: noteColours[noteColourIndex],
+            });
             newTodo.id = newTodo._id;
             return new Promise((res, rej) => {
                 newTodo
