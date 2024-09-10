@@ -13,6 +13,7 @@
   "dependencies": {
     "@apollo/server": "^4.10.4",
     "@types/passport-google-oauth20": "^2.0.16",
+    "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
@@ -25,7 +26,8 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-google-token": "^0.1.2",
-    "passport-oauth2": "^1.8.0"
+    "passport-oauth2": "^1.8.0",
+    "socket.io": "^4.7.5"
   },
   "devDependencies": {
     "@types/node": "^20.12.10",

@@ -23,16 +23,17 @@ const httpServer = http.createServer(app);
 const typeDefs = `#graphql
     scalar GraphQLDateTime
 
+
     input TodoInput {
-        id:ID
-        ownerId: Int
+        id:String
+        ownerId: String
         task: String
         urgency: Int
         importance: Int
     }
     type Todo {
         id:ID
-        ownerId: Int
+        ownerId: String
         task: String
         urgency: Int
         importance: Int
@@ -51,7 +52,7 @@ const typeDefs = `#graphql
     }
     type Mutation {
         createTask(input: TodoInput ): Todo
-        removeTask(id: ID): Todo
+        removeTask(id: String): Todo
         updateTask(input: TodoInput): Todo
 
     }
@@ -88,11 +89,9 @@ const resolvers = {
             return new Promise(async (res, rej) => {
                 try {
                     const todos = await Todo.find();
-                    console.log("@@todos", todos);
                     res(todos);
                 }
                 catch (err) {
-                    console.log("fail", err);
                     rej(err);
                 }
             });
@@ -135,9 +134,7 @@ const resolvers = {
         googleOAuth: async (_, variables, ctx) => {
             const { accessToken } = variables;
             const { models, req, res } = ctx;
-            console.log("@variables", variables);
             await verify(req, res, accessToken);
-            console.log("@@req.user", req.user);
             return req.user ? req.user : { message: "user doesn't exist" };
         },
     },
@@ -162,7 +159,8 @@ const resolvers = {
                 }
             });
         },
-        removeTask: (root, { taskId, id }) => {
+        removeTask: (root, variables) => {
+            const { id } = variables;
             return new Promise(async (res, rej) => {
                 try {
                     const filter = {
@@ -170,7 +168,6 @@ const resolvers = {
                     };
                     // const removedItem = Todo.find({ where: {taskId: taskId} });
                     const deletedItem = await Todo.findOneAndDelete(filter);
-                    console.log("@@ has it been found? ", deletedItem);
                     res(deletedItem);
                 }
                 catch (err) {
@@ -243,7 +240,6 @@ app.use("/auth/google", async (req, res, next) => {
 });
 app.use("/graphql", expressMiddleware(apolloServer, {
     context: async ({ req, res }) => {
-        console.log("req.cookies", req.cookies);
         if (!req.cookies.token) {
             errorsHandler("401");
         }

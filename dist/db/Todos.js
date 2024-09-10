@@ -1,10 +1,11 @@
 import mongoose from "mongoose";
 export const todoScheme = new mongoose.Schema({
     ownerId: {
-        type: Number,
+        type: String,
     },
     taskId: {
         type: Number,
+        autoIncrement: true,
     },
     task: {
         type: String,
