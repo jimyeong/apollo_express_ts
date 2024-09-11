@@ -76,6 +76,9 @@ const typeDefs = `#graphql
             email: String
             todos:[Todo]!
         }
+    type Subscription{
+      subscribe: String
+    }
     type Query{
         getUser : [User]!
         getTodoList : [Todo]!
