@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import http from "http";
+import { createServer } from "http";
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
@@ -9,197 +9,41 @@ import path from "path";
 import { fileURLToPath } from "url";
 import mongoose from "mongoose";
 import Friend from "./db/Friends.js";
-import Todo from "./db/Todos.js";
 import User from "./db/Users.js";
 import "dotenv/config";
-import { verify } from "./authentication/googleAuthentication.js";
 import cookieParser from "cookie-parser";
 import { OAuth2Client } from "google-auth-library";
 import { errorsHandler } from "./handlers/errorsHandler.js";
-import { noteColours } from "./constants/colours.js";
+import { makeExecutableSchema } from "@graphql-tools/schema";
+import { useServer } from "graphql-ws/lib/use/ws";
+import { typeDefs } from "./typeDefs/typeDefs.js";
+import { resolvers } from "./resolvers/resolvers.js";
+import { WebSocketServer } from "ws";
 const client = new OAuth2Client();
 const app = express();
-const httpServer = http.createServer(app);
-const typeDefs = `#graphql
-    scalar GraphQLDateTime
-
-
-    input TodoInput {
-        id:String
-        ownerId: String
-        task: String
-        urgency: Int
-        importance: Int
-    }
-    type Todo {
-        id:ID
-        ownerId: String
-        task: String
-        urgency: Int
-        importance: Int
-        createdAt: GraphQLDateTime
-        updatedAt: GraphQLDateTime
-        taskId: Int
-        colour: String
-    }
-    type User{
-      googleId:String!
-      name: String!
-      email: String!
-      picture: String!
-      given_name: String!
-      family_name: String!
-    }
-    type Mutation {
-        createTask(input: TodoInput ): Todo
-        removeTask(id: String): Todo
-        updateTask(input: TodoInput): Todo
-
-    }
-    type AuthResponse {
-      accessToken: String!
-      refreshToken: String!
-    }
-    type User {
-            firstName: String
-            lastName: String
-            tel: String
-            avatar: String
-            nationality: String
-            gender: Gender
-            description: String
-            email: String
-            todos:[Todo]!
-        }
-    type Query{
-        getUser : [User]!
-        getTodoList : [Todo]!
-        searchUsers(keyword: String):[User]!
-        googleOAuth(accessToken: String):User
-    }
-    enum Gender{
-        MALE
-        FEMALE
-        OTHER
-    }
-`;
-const resolvers = {
-    Query: {
-        getTodoList: async () => {
-            return new Promise(async (res, rej) => {
-                try {
-                    const todos = await Todo.find();
-                    res(todos);
-                }
-                catch (err) {
-                    rej(err);
-                }
-            });
-        },
-        searchUsers: async (root, { keyword }) => {
-            return new Promise(async (res, rej) => {
-                if (!keyword)
-                    res([]);
-                try {
-                    const friends = await Friend.find({
-                        firstName: { $regex: keyword, $options: "i" },
-                    });
-                    res(friends);
-                }
-                catch (error) {
-                    rej(error);
-                }
-            });
-        },
-        getUser: async () => {
-            return new Promise(async (res, rej) => {
-                try {
-                    const friends = await Friend.aggregate([
-                        {
-                            $lookup: {
-                                from: "todos",
-                                localField: "userId",
-                                foreignField: "ownerId",
-                                as: "todos",
-                            },
-                        },
-                    ]).exec();
-                    res(friends);
-                }
-                catch (error) {
-                    rej(error);
-                }
-            });
-        },
-        googleOAuth: async (_, variables, ctx) => {
-            const { accessToken } = variables;
-            const { models, req, res } = ctx;
-            await verify(req, res, accessToken);
-            return req.user ? req.user : { message: "user doesn't exist" };
-        },
-    },
-    Mutation: {
-        updateTask: (root, { input }) => {
-            const { id, task, urgency, importance } = input;
-            return new Promise(async (res, rej) => {
-                const filter = {
-                    _id: id,
-                };
-                const update = {
-                    task,
-                    urgency,
-                    importance,
-                };
-                try {
-                    const updated = await Todo.findOneAndUpdate(filter, update);
-                    res(updated);
-                }
-                catch (error) {
-                    rej(error);
-                }
-            });
-        },
-        removeTask: (root, variables) => {
-            const { id } = variables;
-            return new Promise(async (res, rej) => {
-                try {
-                    const filter = {
-                        _id: id,
-                    };
-                    // const removedItem = Todo.find({ where: {taskId: taskId} });
-                    const deletedItem = await Todo.findOneAndDelete(filter);
-                    res(deletedItem);
-                }
-                catch (err) {
-                    rej(err);
-                }
-            });
-        },
-        createTask: (root, { input }) => {
-            const { ownerId, task, urgency, importance } = input;
-            const notesNum = noteColours.length;
-            const noteColourIndex = Math.floor(Math.random() * notesNum);
-            const newTodo = new Todo({
-                ownerId,
-                task,
-                urgency,
-                importance,
-                colour: noteColours[noteColourIndex],
-            });
-            newTodo.id = newTodo._id;
-            return new Promise((res, rej) => {
-                newTodo
-                    .save()
-                    .then((success) => res(success))
-                    .catch((fail) => rej(fail));
-            });
-        },
-    },
-};
+const httpServer = createServer(app);
+// A number that we'll increment over time to simulate subscription events
+const schema = makeExecutableSchema({ typeDefs, resolvers });
+const wsServer = new WebSocketServer({
+    server: httpServer,
+    path: "/subscription",
+});
+// Save the returned server's info so we can shutdown this server later
+const serverCleanup = useServer({ schema }, wsServer);
 const apolloServer = new ApolloServer({
-    resolvers,
-    typeDefs,
-    plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+    schema,
+    plugins: [
+        ApolloServerPluginDrainHttpServer({ httpServer }),
+        {
+            async serverWillStart() {
+                return {
+                    async drainServer() {
+                        await serverCleanup.dispose();
+                    },
+                };
+            },
+        },
+    ],
     introspection: true,
 });
 await apolloServer.start();

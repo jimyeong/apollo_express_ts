@@ -12,6 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "@apollo/server": "^4.10.4",
+    "@graphql-tools/schema": "^10.0.6",
     "@types/passport-google-oauth20": "^2.0.16",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -28,10 +29,12 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-google-token": "^0.1.2",
     "passport-oauth2": "^1.8.0",
-    "socket.io": "^4.7.5"
+    "socket.io": "^4.7.5",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^20.12.10",
+    "@types/ws": "^8.5.12",
     "typescript": "^5.4.5"
   },
   "type": "module"
