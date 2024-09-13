@@ -34,3 +34,8 @@ more readings are needed I think
 - storage(local, index, session).
 - oauth2 protocol
 - lazy loading for spa application
+
+For the items in a list,
+It's always better for them to have a index number apart from the unique key(whether it's string or number).
+
+If it has a index number it can be accessed directly so You don't actually need to iterate them.

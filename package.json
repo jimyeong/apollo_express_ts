@@ -21,6 +21,7 @@
     "googleapis": "^140.0.0",
     "graphql": "^16.8.1",
     "graphql-passport": "^0.6.8",
+    "graphql-subscriptions": "^2.0.0",
     "graphql-ws": "^5.16.0",
     "install": "^0.13.0",
     "mongoose": "^8.3.3",

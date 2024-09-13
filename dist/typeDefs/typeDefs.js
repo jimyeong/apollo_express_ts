@@ -9,6 +9,10 @@ export const typeDefs = `#graphql
         urgency: Int
         importance: Int
     }
+    type ErrorMessage{
+        code: Int
+        message: String
+    }
     type Todo {
         id:ID
         ownerId: String
@@ -32,25 +36,27 @@ export const typeDefs = `#graphql
         createTask(input: TodoInput ): Todo
         removeTask(id: String): Todo
         updateTask(input: TodoInput): Todo
-
+    }
+    type Subscription{
+      taskUpdated: Todo
+      taskCreated: Todo
+      taskRemoved: Todo
+      errorMessage: String
     }
     type AuthResponse {
       accessToken: String!
       refreshToken: String!
     }
     type User {
-            firstName: String
-            lastName: String
-            tel: String
-            avatar: String
-            nationality: String
-            gender: Gender
-            description: String
-            email: String
-            todos:[Todo]!
-        }
-    type Subscription{
-      subscribe: String
+        firstName: String
+        lastName: String
+        tel: String
+        avatar: String
+        nationality: String
+        gender: Gender
+        description: String
+        email: String
+        todos:[Todo]!
     }
     type Query{
         getUser : [User]!

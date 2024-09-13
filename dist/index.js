@@ -24,6 +24,7 @@ const app = express();
 const httpServer = createServer(app);
 // A number that we'll increment over time to simulate subscription events
 const schema = makeExecutableSchema({ typeDefs, resolvers });
+// subscription connection
 const wsServer = new WebSocketServer({
     server: httpServer,
     path: "/subscription",

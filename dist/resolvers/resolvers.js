@@ -2,6 +2,8 @@ import Todo from "../db/Todos.js";
 import Friend from "../db/Friends.js";
 import { verify } from "../authentication/googleAuthentication.js";
 import { noteColours } from "../constants/colours.js";
+import { PubSub } from "graphql-subscriptions";
+const pubSub = new PubSub();
 export const resolvers = {
     Query: {
         getTodoList: async () => {
@@ -57,6 +59,19 @@ export const resolvers = {
             return req.user ? req.user : { message: "user doesn't exist" };
         },
     },
+    Subscription: {
+        taskUpdated: {
+            subscribe: () => {
+                return pubSub.asyncIterator("TASK_UPDATED");
+            },
+        },
+        taskRemoved: {
+            subscribe: () => pubSub.asyncIterator(["TASK_REMOVED"]),
+        },
+        taskCreated: {
+            subscribe: () => pubSub.asyncIterator(["TASK_CREATED"]),
+        },
+    },
     Mutation: {
         updateTask: (root, { input }) => {
             const { id, task, urgency, importance } = input;
@@ -71,9 +86,17 @@ export const resolvers = {
                 };
                 try {
                     const updated = await Todo.findOneAndUpdate(filter, update);
+                    // pubSub.publish("POST_UPDATED", updated);
+                    const newTask = { ...updated, task, urgency, importance };
+                    pubSub.publish("TASK_UPDATED", {
+                        // the key name becomes the address of the subscription
+                        taskUpdated: newTask,
+                    });
                     res(updated);
+                    // return updated;
                 }
                 catch (error) {
+                    pubSub.publish("MESSAGE", { errorMessage: { ...error } });
                     rej(error);
                 }
             });
@@ -87,10 +110,13 @@ export const resolvers = {
                     };
                     // const removedItem = Todo.find({ where: {taskId: taskId} });
                     const deletedItem = await Todo.findOneAndDelete(filter);
+                    // pubSub.publish("POST_REMOVED", { postRemoved: { ...deletedItem } });
+                    pubSub.publish("TASK_REMOVED", { postRemoved: deletedItem });
                     res(deletedItem);
                 }
-                catch (err) {
-                    rej(err);
+                catch (error) {
+                    pubSub.publish("MESSAGE", { errorMessage: { ...error } });
+                    rej(error);
                 }
             });
         },
@@ -109,8 +135,14 @@ export const resolvers = {
             return new Promise((res, rej) => {
                 newTodo
                     .save()
-                    .then((success) => res(success))
-                    .catch((fail) => rej(fail));
+                    .then((success) => {
+                    pubSub.publish("TASK_CREATED", { postCreated: { ...success } });
+                    res(success);
+                })
+                    .catch((fail) => {
+                    pubSub.publish("MESSAGE", { errorMessage: { ...fail } });
+                    rej(fail);
+                });
             });
         },
     },
