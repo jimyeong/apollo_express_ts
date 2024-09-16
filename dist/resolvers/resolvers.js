@@ -111,8 +111,9 @@ export const resolvers = {
                     // const removedItem = Todo.find({ where: {taskId: taskId} });
                     const deletedItem = await Todo.findOneAndDelete(filter);
                     // pubSub.publish("POST_REMOVED", { postRemoved: { ...deletedItem } });
-                    pubSub.publish("TASK_REMOVED", { postRemoved: deletedItem });
-                    res(deletedItem);
+                    console.log("@@deletedItem", deletedItem);
+                    pubSub.publish("TASK_REMOVED", { taskRemoved: deletedItem });
+                    return deletedItem;
                 }
                 catch (error) {
                     pubSub.publish("MESSAGE", { errorMessage: { ...error } });

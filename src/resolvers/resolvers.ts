@@ -75,7 +75,6 @@ export const resolvers = {
   Mutation: {
     updateTask: (root, { input }) => {
       const { id, task, urgency, importance } = input;
-
       return new Promise(async (res, rej) => {
         const filter = {
           _id: id,
@@ -111,8 +110,9 @@ export const resolvers = {
           // const removedItem = Todo.find({ where: {taskId: taskId} });
           const deletedItem = await Todo.findOneAndDelete(filter);
           // pubSub.publish("POST_REMOVED", { postRemoved: { ...deletedItem } });
-          pubSub.publish("TASK_REMOVED", { postRemoved: deletedItem });
-          res(deletedItem);
+
+          pubSub.publish("TASK_REMOVED", { taskRemoved: deletedItem });
+          return deletedItem;
         } catch (error) {
           pubSub.publish("MESSAGE", { errorMessage: { ...error } });
           rej(error);
