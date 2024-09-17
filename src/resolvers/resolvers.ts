@@ -137,7 +137,7 @@ export const resolvers = {
         newTodo
           .save()
           .then((success) => {
-            pubSub.publish("TASK_CREATED", { postCreated: { ...success } });
+            pubSub.publish("TASK_CREATED", { taskCreated: newTodo });
             res(success);
           })
           .catch((fail) => {

@@ -111,7 +111,6 @@ export const resolvers = {
                     // const removedItem = Todo.find({ where: {taskId: taskId} });
                     const deletedItem = await Todo.findOneAndDelete(filter);
                     // pubSub.publish("POST_REMOVED", { postRemoved: { ...deletedItem } });
-                    console.log("@@deletedItem", deletedItem);
                     pubSub.publish("TASK_REMOVED", { taskRemoved: deletedItem });
                     return deletedItem;
                 }
@@ -137,7 +136,7 @@ export const resolvers = {
                 newTodo
                     .save()
                     .then((success) => {
-                    pubSub.publish("TASK_CREATED", { postCreated: { ...success } });
+                    pubSub.publish("TASK_CREATED", { taskCreated: newTodo });
                     res(success);
                 })
                     .catch((fail) => {
