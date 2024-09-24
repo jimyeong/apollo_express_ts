@@ -84,6 +84,7 @@ app.use("/auth/google", async (req, res, next) => {
     audience: process.env.OAUTH_CLIENT_ID, // Specify the CLIENT_ID of the app that accesses the backend
     // maxExpiry: 1,
   });
+
   const payload = ticket.getPayload();
   const userid = payload["sub"];
   req.user = { userid, payload };
